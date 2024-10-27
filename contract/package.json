@@ -1,0 +1,11 @@
+{
+  "scripts": {
+    "flatten": "hardhat flatten"
+  },
+  "devDependencies": {
+    "hardhat": "^2.22.14"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.1.0"
+  }
+}
