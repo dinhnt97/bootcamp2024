@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useAccount, useAccountEffect, useSignMessage, useWriteContract, useReadContracts, useWaitForTransactionReceipt } from "wagmi";
+import { useAccount, useAccountEffect, useSignMessage, useWriteContract, useReadContracts, useWaitForTransactionReceipt,useDisconnect  } from "wagmi";
 import { getUserInfo } from "../../action";
 import erc20Abi from "../contract/erc20TokenAbi";
 import fundManagerAbi from "../contract/FundManagerAbi";
@@ -7,44 +7,73 @@ import { useCallback, useMemo } from "react";
 import { MaxUint256 } from 'ethers';
 
 const SIGN_MESSAGE = "BOOT_CAMP_2024_PROJECT";
-export const FUND_CONTRACT_ADDRESS = "0xa75556C5b07e88119d7979761D00b8a55A1Bc315";
+export const FUND_CONTRACT_ADDRESS = "0xb5145b577c437d8fd9373071bb2c77d1ce0cc9b4";
 export const ERC20_TOKEN_ADDRESS = "0xd8f557Ab68891bd4d69fe8e5080b1b8340C33fC1";
 export const TOKEN_NAME = "BCP24";
 
+
 export const useUser = ()=>{
+
     const { address, isConnected } = useAccount();
+    const {disconnect} = useDisconnect();
     const {signMessageAsync} = useSignMessage();
 
-    useEffect(() => {
-        if(address && isConnected){
+    const [signature, setSignature] = useState<string | null>(null); 
+    const [isLoginSuccess, setIsLoginSuccess] = useState<boolean>(false);
+    const [isAdmin, setIsAdmin] = useState<boolean>(false);
+
+
+
+    const onLogin = async (address: `0x${string}`) => {
+      try {
+        const user = localStorage.getItem("user")
+        let signature = localStorage.getItem("signature") 
+        if((!user || !signature) && address){
+            signature = await signMessageAsync({message:SIGN_MESSAGE});
+            localStorage.setItem("user", address);
+            localStorage.setItem("signature", signature);
+        }
+        const data = await getUserInfo();
+        setIsAdmin(data.isAdmin);
+        setSignature(signature);
+        setIsLoginSuccess(true);
+        if(!user){
+            window.alert(`Welcome ${data.address}`);
+        }
+      } catch (error) {
+        disconnect();
+        window.alert(`Login fail: ${error}`);
+      }
+    }
+
+    useEffect(()=>{
+        const getLocalInfo = async ()=>{
             const user = localStorage.getItem("user")
-            const signature = localStorage.getItem("signature") 
-            if(user !== address || !signature){
-                onLogin(address);
+            let signature = localStorage.getItem("signature") 
+            if(user && signature){
+                setSignature(signature);
+                setIsLoginSuccess(true);
+                const data = await getUserInfo();
             }
         }
-    }, [address, isConnected]);
-  
-    const onLogin = async (address:`0x${string}`) => {
-      try {
-        const signature = await signMessageAsync({message:SIGN_MESSAGE});
-        localStorage.setItem("user", address);
-        localStorage.setItem("signature", signature);
-        const data = await getUserInfo();
-        console.log(data);
-      } catch (error) {
-        console.log(error);
-      }
-     
-    }
+        getLocalInfo()
+    },[isConnected])
+
   
     useAccountEffect({
-      onDisconnect() {
-        localStorage.removeItem("user");
-        localStorage.removeItem("signature");
-      },
+        onConnect(data) {
+            if(data.address){
+                onLogin(data.address);
+            }
+        },
+        onDisconnect() {
+            localStorage.removeItem("user");
+            localStorage.removeItem("signature");
+            setSignature(null);
+            setIsLoginSuccess(false);
+        },
     });
-    return {address, isConnected}
+    return {address, isConnected, isLoginSuccess, signature, isAdmin}
 }
 
 export const useERC20Token = (userAddress?:`0x${string}`, spenderAddress?:string ) => {
@@ -91,12 +120,9 @@ export const useERC20Token = (userAddress?:`0x${string}`, spenderAddress?:string
 }
 
 export const useInvest = ()=>{
-    const { data: hash, writeContract,} = useWriteContract()
-    const { isLoading: isConfirming, isSuccess: isConfirmed } =
-    useWaitForTransactionReceipt({
-      hash,
-    })
+    const { data: hash, writeContractAsync,} = useWriteContract()
     const account = useAccount();
+    const [isConfirming, setIsConfirming] = useState<boolean>(false);
 
     const {isAllowToSend, isLoading, onApprove} = useERC20Token(account.address, FUND_CONTRACT_ADDRESS)
 
@@ -105,16 +131,20 @@ export const useInvest = ()=>{
             if(!isAllowToSend(BigInt(amount))){
                 await onApprove(FUND_CONTRACT_ADDRESS)
             }else{
-                writeContract({
+                setIsConfirming(true);
+                await writeContractAsync({
                     address: FUND_CONTRACT_ADDRESS,
                     abi: fundManagerAbi,
                     functionName: 'invest',
                     args: [BigInt(fundId), BigInt(amount.toString())],
                 })
+                window.alert('Investment is handled by blockchain network');
             }
           } catch (error) {
-            console.error('Error investing in fund:', error);
-          }   
+            window.alert('Error investing in fund:', error);
+          } finally {
+            setIsConfirming(false);
+          }
     }
-    return {onInvest, isLoading, isConfirming, isConfirmed}
+    return {onInvest, isLoading, isConfirming}
 }

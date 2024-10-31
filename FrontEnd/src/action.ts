@@ -44,3 +44,16 @@ export const getInvests = async () => {
         throw error;
     }
 }
+
+export const onCreateFund = async (name:string, description:string) => {
+    try {
+        const response = await axios.post("http://localhost:3008/create-fund", {
+            name: name,
+            description: description,
+          })
+          console.log(response)
+    } catch (error) {
+        throw error;
+        
+    }
+  }

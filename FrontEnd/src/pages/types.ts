@@ -14,4 +14,9 @@ type Investment = {
     name: string;
     amount: string;
     fund: Fund
+    investment:{
+        id: string;
+        amount: string;
+    },
+    txHash: string;
 }

@@ -11,6 +11,7 @@ model User {
   id    Int     @id @default(autoincrement())
   address String  @unique
   avatar String
+  isAdmin Boolean @default(false)
 }
 
 model Fund {
@@ -31,4 +32,19 @@ model Investment {
   amount  Float
   
   @@unique([userId, fundId])
+}
+
+model UserInvestment {
+  id      Int     @id @default(autoincrement())
+  userId  Int
+  investmentId  Int
+  amount  Float
+  txHash  String @unique
+  
+  @@unique([userId, investmentId, txHash])
+}
+
+model SyncState {
+  id          Int     @id @default(autoincrement())
+  lastBlock   Int
 }

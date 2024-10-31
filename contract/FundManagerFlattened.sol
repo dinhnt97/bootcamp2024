@@ -239,6 +239,7 @@ contract FundManager is Ownable(address(msg.sender)) {
     event FundCreated(uint256 fundId, string name, address tokenAddress);
     event Invested(address indexed user, uint256 fundId, uint256 amount);
     event Debug(string message, uint256 fundId, uint256 amount); // Define the Debug event
+    event Withdrawn(uint256 fundId, uint256 amount);
 
     function createFund(string memory _name, address _tokenAddress) external onlyOwner {
         funds.push(Fund({
@@ -271,5 +272,18 @@ contract FundManager is Ownable(address(msg.sender)) {
             investments[i] = userInvestments[_user][i];
         }
         return investments;
+    }
+
+    function withdraw(uint256 _fundId) external onlyOwner {
+        require(_fundId < funds.length, "Fund does not exist");
+        Fund storage fund = funds[_fundId];
+        uint256 amount = fund.totalInvestment;
+        require(amount > 0, "No funds to withdraw");
+
+        IERC20 token = IERC20(fund.tokenAddress);
+        require(token.transfer(msg.sender, amount), "Token transfer failed");
+
+        fund.totalInvestment = 0;
+        emit Withdrawn(_fundId, amount);
     }
 }

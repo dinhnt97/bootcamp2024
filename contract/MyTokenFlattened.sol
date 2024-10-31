@@ -733,7 +733,7 @@ pragma solidity ^0.8.20;
 
 
 contract Bootcamp2024 is ERC20("Bootcamp2024", "BCP24"), Ownable(msg.sender) {
-    constructor() ERC20("Bootcamp2024", "BCP24") {
+    constructor() {
         _mint(msg.sender, 1000000 * 10 ** decimals());
     }
 
